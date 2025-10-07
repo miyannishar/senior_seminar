@@ -10,6 +10,11 @@ Implements multi-step validation including:
 import re
 from typing import Dict, Any, Optional, List
 
+from utils.logger import setup_logger, log_access_attempt, log_pii_detection
+from utils.exceptions import AccessDeniedException
+
+logger = setup_logger(__name__)
+
 
 # Sensitive terms that should trigger masking
 SENSITIVE_TERMS = [
@@ -126,15 +131,19 @@ def validation_filter(
     # Step 1: Role-based access control
     document_domain = doc.get('domain', 'public')
     if not check_access_permission(user_role, document_domain):
+        log_access_attempt("user", user_role, document_domain, granted=False)
         if log_violations:
-            print(f"🚫 Access denied: User role '{user_role}' cannot access '{document_domain}' domain")
+            logger.warning(f"🚫 Access denied: Role '{user_role}' cannot access '{document_domain}' domain")
         return None
+    
+    log_access_attempt("user", user_role, document_domain, granted=True)
     
     # Step 2: Detect sensitive terms
     sensitive_terms_found = detect_sensitive_terms(doc['content'])
     if sensitive_terms_found:
         validated_doc['sensitive_terms_detected'] = sensitive_terms_found
-        print(f"⚠️  Sensitive terms detected: {', '.join(sensitive_terms_found)}")
+        logger.warning(f"⚠️  Sensitive terms detected: {', '.join(sensitive_terms_found)}")
+        log_pii_detection(doc.get('id', 'unknown'), sensitive_terms_found)
     
     # Step 3: Role-aware PII Masking
     # Admins see everything in their authorized domains
@@ -166,7 +175,7 @@ def validation_filter(
         if original_content != masked_content:
             validated_doc['content'] = masked_content
             validated_doc['pii_masked'] = True
-            print(f"🔒 PII masked in document: {doc.get('title', doc['id'])}")
+            logger.info(f"🔒 PII masked in document: {doc.get('title', doc['id'])}")
     
     # Step 4: Add validation metadata
     validated_doc['validated'] = True
@@ -202,9 +211,9 @@ def batch_validate(
             denied_count += 1
     
     if denied_count > 0:
-        print(f"🚫 {denied_count} document(s) denied due to access restrictions")
+        logger.info(f"🚫 {denied_count} document(s) denied due to access restrictions")
     
-    print(f"✅ {len(validated_docs)} document(s) passed validation")
+    logger.info(f"✅ {len(validated_docs)} document(s) passed validation")
     
     return validated_docs
 
@@ -262,7 +271,7 @@ class ComplianceValidator:
         """
         # Apply framework-specific validation
         if doc.get('domain') not in self.rules.get('allowed_domains', []):
-            print(f"🚫 Compliance violation: {self.framework} does not allow '{doc.get('domain')}' domain")
+            logger.warning(f"🚫 Compliance violation: {self.framework} does not allow '{doc.get('domain')}' domain")
             return None
         
         # Apply standard validation

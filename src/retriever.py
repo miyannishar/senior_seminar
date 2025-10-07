@@ -11,6 +11,11 @@ import numpy as np
 from typing import List, Dict, Any
 import os
 
+from utils.logger import setup_logger
+from utils.exceptions import RetrievalException
+
+logger = setup_logger(__name__)
+
 
 class HybridRetriever:
     """
@@ -29,8 +34,8 @@ class HybridRetriever:
         
         # Check if OpenAI API key is set
         if not os.getenv("OPENAI_API_KEY"):
-            print("⚠️  Warning: OPENAI_API_KEY not set. Semantic search will fail.")
-            print("   Set it with: export OPENAI_API_KEY='your-key-here'")
+            logger.warning("⚠️  OPENAI_API_KEY not set. Semantic search will fail.")
+            logger.warning("   Set it with: export OPENAI_API_KEY='your-key-here'")
         
         # Initialize embeddings and vector store
         self.embeddings = OpenAIEmbeddings()
@@ -54,7 +59,7 @@ class HybridRetriever:
         )
         self.keyword_matrix = self.keyword_index.fit_transform(texts)
         
-        print(f"✅ HybridRetriever initialized with {len(documents)} documents")
+        logger.info(f"✅ HybridRetriever initialized with {len(documents)} documents")
     
     def retrieve(self, query: str, k: int = 5, semantic_weight: float = 0.7) -> List[Dict[str, Any]]:
         """
@@ -83,7 +88,7 @@ class HybridRetriever:
                     result['relevance_score'] = semantic_weight
                     semantic_results.append(result)
         except Exception as e:
-            print(f"⚠️  Semantic search failed: {e}")
+            logger.error(f"⚠️  Semantic search failed: {e}")
             semantic_results = []
         
         # Keyword-based retrieval using TF-IDF
@@ -113,7 +118,7 @@ class HybridRetriever:
         # Sort by relevance score and return top k
         final_results = sorted(merged.values(), key=lambda x: x['relevance_score'], reverse=True)[:k]
         
-        print(f"📊 Retrieved {len(final_results)} documents for query: '{query[:50]}...'")
+        logger.info(f"📊 Retrieved {len(final_results)} documents for query: '{query[:50]}...'")
         return final_results
     
     def retrieve_by_domain(self, query: str, domain: str, k: int = 5) -> List[Dict[str, Any]]:

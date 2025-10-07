@@ -16,9 +16,14 @@ from typing import Dict, Any, List
 from dotenv import load_dotenv
 
 from generator import SecureRAGGenerator, export_logs
+from utils.logger import setup_logger
+from utils.config import get_config
 
 # Load environment variables from .env file
 load_dotenv()
+
+# Setup logger
+logger = setup_logger(__name__)
 
 
 def load_documents(filepath: str = "../data/sample_docs.json") -> List[Dict[str, Any]]:
@@ -38,13 +43,13 @@ def load_documents(filepath: str = "../data/sample_docs.json") -> List[Dict[str,
     try:
         with open(full_path, 'r') as f:
             documents = json.load(f)
-        print(f"✅ Loaded {len(documents)} documents from {filepath}")
+        logger.info(f"✅ Loaded {len(documents)} documents from {filepath}")
         return documents
     except FileNotFoundError:
-        print(f"❌ Error: Could not find document file at {full_path}")
+        logger.error(f"❌ Error: Could not find document file at {full_path}")
         sys.exit(1)
     except json.JSONDecodeError:
-        print(f"❌ Error: Invalid JSON in {filepath}")
+        logger.error(f"❌ Error: Invalid JSON in {filepath}")
         sys.exit(1)
 
 

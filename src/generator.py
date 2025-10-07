@@ -15,6 +15,11 @@ from langchain.schema import HumanMessage, SystemMessage
 
 from retriever import HybridRetriever
 from validator import batch_validate
+from utils.logger import setup_logger, log_query
+from utils.config import get_config
+from utils.exceptions import GenerationException
+
+logger = setup_logger(__name__)
 
 
 # Logging storage (in production, use proper database or logging service)
@@ -116,8 +121,8 @@ class SecureRAGGenerator:
         
         # Check API key
         if not os.getenv("OPENAI_API_KEY"):
-            print("⚠️  Warning: OPENAI_API_KEY not set. Generation will fail.")
-            print("   Set it with: export OPENAI_API_KEY='your-key-here'")
+            logger.warning("⚠️  OPENAI_API_KEY not set. Generation will fail.")
+            logger.warning("   Set it with: export OPENAI_API_KEY='your-key-here'")
             self.llm = None
         else:
             self.llm = ChatOpenAI(
@@ -125,7 +130,7 @@ class SecureRAGGenerator:
                 temperature=temperature
             )
         
-        print(f"✅ SecureRAGGenerator initialized with model: {model_name}")
+        logger.info(f"✅ SecureRAGGenerator initialized with model: {model_name}")
     
     @log_interaction
     def generate_secure_response(
@@ -251,7 +256,7 @@ Provide a clear answer based solely on the context. If the context doesn't conta
             if validated:
                 validated_docs.append(validated)
         
-        print(f"✅ Compliance validation ({compliance_framework}): {len(validated_docs)}/{len(retrieved_docs)} documents approved")
+        logger.info(f"✅ Compliance validation ({compliance_framework}): {len(validated_docs)}/{len(retrieved_docs)} documents approved")
         
         if not validated_docs:
             return (
