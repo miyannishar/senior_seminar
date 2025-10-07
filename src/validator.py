@@ -12,35 +12,9 @@ from typing import Dict, Any, Optional, List
 
 from utils.logger import setup_logger, log_access_attempt, log_pii_detection
 from utils.exceptions import AccessDeniedException
+from constants import SENSITIVE_TERMS, PII_PATTERNS, ROLE_ACCESS
 
 logger = setup_logger(__name__)
-
-
-# Sensitive terms that should trigger masking
-SENSITIVE_TERMS = [
-    "SSN", "AccountNumber", "Salary", "PatientName", 
-    "Confidential", "Password", "CreditCard", "BankAccount"
-]
-
-# Role-based access control mapping
-ROLE_ACCESS = {
-    "admin": ["finance", "hr", "health", "public", "legal"],
-    "analyst": ["finance", "hr", "public"],
-    "manager": ["hr", "public"],
-    "employee": ["public"],
-    "guest": ["public"]
-}
-
-# PII patterns for masking
-PII_PATTERNS = {
-    'ssn': (r'\b\d{3}-\d{2}-\d{4}\b', '[MASKED-SSN]'),
-    'ssn_no_dash': (r'\b\d{9}\b', '[MASKED-SSN]'),
-    'credit_card': (r'\b\d{4}[\s-]?\d{4}[\s-]?\d{4}[\s-]?\d{4}\b', '[MASKED-CC]'),
-    'email': (r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b', '[MASKED-EMAIL]'),
-    'phone': (r'\b\d{3}-\d{3}-\d{4}\b', '[MASKED-PHONE]'),
-    'account_id': (r'\b[A-Z]{2}\d{6}\b', '[MASKED-ID]'),
-    'salary': (r'\$\d{1,3}(,\d{3})*(\.\d{2})?', '[MASKED-AMOUNT]'),
-}
 
 
 def mask_sensitive_data(text: str, aggressive: bool = False) -> str:
@@ -87,18 +61,51 @@ def detect_sensitive_terms(text: str) -> List[str]:
 
 
 def check_access_permission(user_role: str, document_domain: str) -> bool:
-    """
-    Check if a user role has access to a document domain.
-    
-    Args:
-        user_role: Role of the user (e.g., 'admin', 'analyst')
-        document_domain: Domain of the document (e.g., 'finance', 'hr')
-    
-    Returns:
-        True if access is granted, False otherwise
-    """
+    """Check if a user role has access to a document domain."""
     allowed_domains = ROLE_ACCESS.get(user_role, [])
     return document_domain in allowed_domains
+
+
+def _get_masking_patterns_for_role(user_role: str, domain: str) -> List[str]:
+    """
+    Determine which PII patterns to apply based on role and domain.
+    
+    Returns:
+        List of pattern names to mask
+    """
+    # Admin: minimal masking
+    if user_role == 'admin':
+        return ['ssn', 'ssn_no_dash', 'credit_card', 'account_id']
+    
+    # Analyst in finance/HR: mask only critical PII
+    if user_role == 'analyst' and domain in ['finance', 'hr']:
+        return ['ssn', 'ssn_no_dash', 'credit_card']
+    
+    # Manager in HR: mask sensitive financial data too
+    if user_role == 'manager' and domain == 'hr':
+        return ['ssn', 'ssn_no_dash', 'credit_card', 'salary']
+    
+    # Default: aggressive masking for all others
+    return list(PII_PATTERNS.keys())
+
+
+def _apply_role_based_masking(doc: Dict[str, Any], user_role: str, domain: str) -> Dict[str, Any]:
+    """Apply PII masking based on user role and document domain."""
+    original_content = doc['content']
+    patterns_to_mask = _get_masking_patterns_for_role(user_role, domain)
+    
+    masked_content = original_content
+    for pattern_name in patterns_to_mask:
+        if pattern_name in PII_PATTERNS:
+            pattern, replacement = PII_PATTERNS[pattern_name]
+            masked_content = re.sub(pattern, replacement, masked_content)
+    
+    if original_content != masked_content:
+        doc['content'] = masked_content
+        doc['pii_masked'] = True
+        logger.info(f"🔒 PII masked in document: {doc.get('title', doc['id'])}")
+    
+    return doc
 
 
 def validation_filter(
@@ -146,36 +153,8 @@ def validation_filter(
         log_pii_detection(doc.get('id', 'unknown'), sensitive_terms_found)
     
     # Step 3: Role-aware PII Masking
-    # Admins see everything in their authorized domains
-    # Analysts can see financial/business data but not SSNs/personal data
-    # Other roles get more aggressive masking
     if mask_pii:
-        original_content = validated_doc['content']
-        
-        # Admin: minimal masking (only SSN, credit cards)
-        if user_role == 'admin':
-            masked_content = mask_sensitive_data(original_content, aggressive=False)
-        # Analyst: can see amounts/emails in finance/hr, but mask SSN/CC
-        elif user_role == 'analyst' and document_domain in ['finance', 'hr']:
-            # Custom masking for analysts - only mask critical PII
-            masked_content = original_content
-            for pattern_name, (pattern, replacement) in PII_PATTERNS.items():
-                if pattern_name in ['ssn', 'ssn_no_dash', 'credit_card']:
-                    masked_content = re.sub(pattern, replacement, masked_content)
-        # Manager: moderate masking in HR domain
-        elif user_role == 'manager' and document_domain == 'hr':
-            masked_content = original_content
-            for pattern_name, (pattern, replacement) in PII_PATTERNS.items():
-                if pattern_name in ['ssn', 'ssn_no_dash', 'credit_card', 'salary']:
-                    masked_content = re.sub(pattern, replacement, masked_content)
-        # Everyone else: aggressive masking
-        else:
-            masked_content = mask_sensitive_data(original_content, aggressive=True)
-        
-        if original_content != masked_content:
-            validated_doc['content'] = masked_content
-            validated_doc['pii_masked'] = True
-            logger.info(f"🔒 PII masked in document: {doc.get('title', doc['id'])}")
+        validated_doc = _apply_role_based_masking(validated_doc, user_role, document_domain)
     
     # Step 4: Add validation metadata
     validated_doc['validated'] = True

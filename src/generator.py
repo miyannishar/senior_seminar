@@ -18,6 +18,7 @@ from validator import batch_validate
 from utils.logger import setup_logger, log_query
 from utils.config import get_config
 from utils.exceptions import GenerationException
+from constants import SYSTEM_PROMPT, USER_PROMPT_TEMPLATE
 
 logger = setup_logger(__name__)
 
@@ -26,31 +27,36 @@ logger = setup_logger(__name__)
 INTERACTION_LOGS = []
 
 
+def _print_interaction_summary(log_entry: Dict[str, Any]):
+    """Print formatted interaction summary to console."""
+    print("\n" + "="*80)
+    print(f"📝 INTERACTION LOG")
+    print(f"   User: {log_entry['user']} (Role: {log_entry['user_role']})")
+    print(f"   Query: {log_entry['query']}")
+    print(f"   Duration: {log_entry['duration_seconds']:.2f}s")
+    print(f"   Sources: {len(log_entry['sources'])} documents")
+    print(f"   Status: {log_entry['status'].upper()}")
+    if log_entry.get('error'):
+        print(f"   Error: {log_entry['error']}")
+    print("="*80 + "\n")
+
+
 def log_interaction(func):
-    """
-    Decorator to log all interactions with the RAG system.
-    Captures query, response, sources, timing, and metadata.
-    """
+    """Decorator to log all RAG system interactions."""
     @wraps(func)
     def wrapper(*args, **kwargs):
         user = kwargs.get("user", {})
         query = kwargs.get("query", "")
-        
         start_time = datetime.datetime.now()
         
         try:
             response, sources, metadata = func(*args, **kwargs)
-            status = "success"
-            error = None
+            status, error = "success", None
         except Exception as e:
-            response = f"Error: {str(e)}"
-            sources = []
-            metadata = {}
-            status = "error"
-            error = str(e)
+            response, sources, metadata = f"Error: {str(e)}", [], {}
+            status, error = "error", str(e)
         
-        end_time = datetime.datetime.now()
-        duration = (end_time - start_time).total_seconds()
+        duration = (datetime.datetime.now() - start_time).total_seconds()
         
         log_entry = {
             "user": user.get("username", "anonymous"),
@@ -66,18 +72,7 @@ def log_interaction(func):
         }
         
         INTERACTION_LOGS.append(log_entry)
-        
-        # Print formatted log
-        print("\n" + "="*80)
-        print(f"📝 INTERACTION LOG")
-        print(f"   User: {log_entry['user']} (Role: {log_entry['user_role']})")
-        print(f"   Query: {query}")
-        print(f"   Duration: {duration:.2f}s")
-        print(f"   Sources: {len(sources)} documents")
-        print(f"   Status: {status.upper()}")
-        if error:
-            print(f"   Error: {error}")
-        print("="*80 + "\n")
+        _print_interaction_summary(log_entry)
         
         return response, sources, metadata
     
@@ -132,6 +127,42 @@ class SecureRAGGenerator:
         
         logger.info(f"✅ SecureRAGGenerator initialized with model: {model_name}")
     
+    def _build_context(self, validated_docs: List[Dict[str, Any]]) -> str:
+        """Build context string from validated documents."""
+        context_parts = [
+            f"[Document {i}: {doc.get('title', 'Untitled')}]\n{doc['content']}\n"
+            for i, doc in enumerate(validated_docs, 1)
+        ]
+        return "\n".join(context_parts)
+    
+    def _extract_sources(self, validated_docs: List[Dict[str, Any]]) -> List[Dict[str, str]]:
+        """Extract source metadata from validated documents."""
+        return [
+            {
+                "title": doc.get("title", "Untitled"),
+                "id": doc["id"],
+                "domain": doc.get("domain", "unknown")
+            }
+            for doc in validated_docs
+        ]
+    
+    def _generate_llm_response(self, context: str, query: str) -> str:
+        """Generate response using LLM."""
+        if self.llm is None:
+            return f"[Mock Response - API Key not set]\nContext available for query: '{query}'"
+        
+        user_prompt = USER_PROMPT_TEMPLATE.format(context=context, query=query)
+        
+        try:
+            messages = [
+                SystemMessage(content=SYSTEM_PROMPT),
+                HumanMessage(content=user_prompt)
+            ]
+            return self.llm.invoke(messages).content
+        except Exception as e:
+            logger.error(f"LLM generation failed: {e}")
+            return f"Error generating response: {str(e)}"
+    
     @log_interaction
     def generate_secure_response(
         self, 
@@ -139,21 +170,9 @@ class SecureRAGGenerator:
         user: Dict[str, str],
         k: int = 5
     ) -> Tuple[str, List[str], Dict[str, Any]]:
-        """
-        Generate a secure response using RAG with validation.
-        
-        Args:
-            query: User query
-            user: User dictionary with 'username' and 'role'
-            k: Number of documents to retrieve
-        
-        Returns:
-            Tuple of (response, sources, metadata)
-        """
-        # Step 1: Retrieve relevant documents
+        """Generate a secure response using RAG with validation."""
+        # Retrieve and validate documents
         retrieved_docs = self.retriever.retrieve(query, k=k)
-        
-        # Step 2: Validate and filter documents based on user role
         user_role = user.get("role", "guest")
         validated_docs = batch_validate(retrieved_docs, user_role, mask_pii=True)
         
@@ -164,55 +183,11 @@ class SecureRAGGenerator:
                 {"documents_retrieved": len(retrieved_docs), "documents_after_validation": 0}
             )
         
-        # Step 3: Prepare context from validated documents
-        context_parts = []
-        for i, doc in enumerate(validated_docs, 1):
-            context_parts.append(f"[Document {i}: {doc.get('title', 'Untitled')}]\n{doc['content']}\n")
+        # Generate response
+        context = self._build_context(validated_docs)
+        response = self._generate_llm_response(context, query)
+        sources = self._extract_sources(validated_docs)
         
-        context = "\n".join(context_parts)
-        
-        # Step 4: Generate response using LLM
-        if self.llm is None:
-            response = f"[Mock Response - API Key not set]\nBased on {len(validated_docs)} validated documents, I would answer your query: '{query}'"
-        else:
-            system_prompt = """You are a secure AI assistant with access to verified, filtered enterprise documents.
-Your responses must:
-1. Only use information from the provided context
-2. Never fabricate or guess information
-3. Cite which documents you used
-4. Respect data sensitivity (some information may be masked)
-5. Be clear, concise, and professional"""
-            
-            user_prompt = f"""Using ONLY the verified context below, answer the question.
-
-Context:
-{context}
-
-Question: {query}
-
-Provide a clear answer based solely on the context. If the context doesn't contain enough information, say so."""
-            
-            messages = [
-                SystemMessage(content=system_prompt),
-                HumanMessage(content=user_prompt)
-            ]
-            
-            try:
-                response = self.llm.invoke(messages).content
-            except Exception as e:
-                response = f"Error generating response: {str(e)}"
-        
-        # Step 5: Extract sources
-        sources = [
-            {
-                "title": doc.get("title", "Untitled"),
-                "id": doc["id"],
-                "domain": doc.get("domain", "unknown")
-            }
-            for doc in validated_docs
-        ]
-        
-        # Step 6: Metadata for observability
         metadata = {
             "documents_retrieved": len(retrieved_docs),
             "documents_after_validation": len(validated_docs),
@@ -230,37 +205,27 @@ Provide a clear answer based solely on the context. If the context doesn't conta
         compliance_framework: str = "general",
         k: int = 5
     ) -> Tuple[str, List[str], Dict[str, Any]]:
-        """
-        Generate response with specific compliance framework validation.
-        
-        Args:
-            query: User query
-            user: User dictionary
-            compliance_framework: Framework to apply ('hipaa', 'gdpr', 'sox', 'general')
-            k: Number of documents to retrieve
-        
-        Returns:
-            Tuple of (response, sources, metadata)
-        """
+        """Generate response with specific compliance framework validation."""
         from validator import ComplianceValidator
         
-        # Retrieve documents
+        # Retrieve and validate with compliance framework
         retrieved_docs = self.retriever.retrieve(query, k=k)
-        
-        # Apply compliance-specific validation
         validator = ComplianceValidator(framework=compliance_framework)
-        validated_docs = []
         
-        for doc in retrieved_docs:
-            validated = validator.validate(doc, user.get("role", "guest"))
-            if validated:
-                validated_docs.append(validated)
+        validated_docs = [
+            validated for doc in retrieved_docs
+            if (validated := validator.validate(doc, user.get("role", "guest")))
+        ]
         
-        logger.info(f"✅ Compliance validation ({compliance_framework}): {len(validated_docs)}/{len(retrieved_docs)} documents approved")
+        logger.info(
+            f"✅ Compliance validation ({compliance_framework}): "
+            f"{len(validated_docs)}/{len(retrieved_docs)} documents approved"
+        )
         
         if not validated_docs:
             return (
-                f"No documents available that comply with {compliance_framework.upper()} requirements for your access level.",
+                f"No documents available that comply with {compliance_framework.upper()} "
+                f"requirements for your access level.",
                 [],
                 {
                     "compliance_framework": compliance_framework,
@@ -269,17 +234,11 @@ Provide a clear answer based solely on the context. If the context doesn't conta
                 }
             )
         
-        # Generate response (reuse logic)
-        # [Similar to generate_secure_response, abbreviated for brevity]
-        context = "\n".join([f"{doc.get('title', 'Doc')}: {doc['content']}" for doc in validated_docs])
+        # Generate response using helper methods
+        context = self._build_context(validated_docs)
+        response = self._generate_llm_response(context, query)
+        sources = self._extract_sources(validated_docs)
         
-        if self.llm:
-            prompt = f"Context:\n{context}\n\nQuestion: {query}\n\nAnswer based only on context:"
-            response = self.llm.invoke([HumanMessage(content=prompt)]).content
-        else:
-            response = f"[Compliance-aware response using {len(validated_docs)} {compliance_framework}-compliant documents]"
-        
-        sources = [{"title": doc.get("title"), "id": doc["id"]} for doc in validated_docs]
         metadata = {
             "compliance_framework": compliance_framework,
             "documents_retrieved": len(retrieved_docs),
