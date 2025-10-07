@@ -1,0 +1,111 @@
+[
+  {
+    "id": "doc_001",
+    "title": "Q2 2024 Financial Report - Executive Summary",
+    "content": "Q2 2024 showed strong performance with revenue growth of 15% YoY. Key highlights include improved operational efficiency and successful market expansion. Total revenue reached $45.2M. Operating expenses were controlled at $32.1M. Net profit margin improved to 18.5%. Strategic investments in R&D continued as planned. AccountNumber AC847392 processed the quarterly dividends. Contact: finance@company.com for detailed breakdowns.",
+    "domain": "finance",
+    "author": "Finance Team",
+    "date": "2024-07-15",
+    "classification": "confidential"
+  },
+  {
+    "id": "doc_002",
+    "title": "Employee Benefits Overview 2024",
+    "content": "Our comprehensive benefits package includes health insurance (medical, dental, vision), 401(k) matching up to 6%, unlimited PTO policy, professional development budget of $2,500 per employee annually, remote work flexibility, wellness programs, and employee assistance programs. New hires become eligible after 90 days. Salary ranges from $65,000 to $150,000 depending on role and experience. For questions, contact hr@company.com.",
+    "domain": "hr",
+    "author": "HR Department",
+    "date": "2024-01-10",
+    "classification": "internal"
+  },
+  {
+    "id": "doc_003",
+    "title": "Healthcare Compliance Guidelines - HIPAA Requirements",
+    "content": "All staff handling patient information must comply with HIPAA regulations. Protected Health Information (PHI) includes: PatientName, medical record numbers, dates of treatment, SSN 123-45-6789 format data, and diagnostic information. Access to PHI is restricted to authorized personnel only. Violations may result in termination and legal action. Annual compliance training is mandatory. Report breaches immediately to compliance@healthorg.com. Encrypted communication channels must be used for all patient data transfers.",
+    "domain": "health",
+    "author": "Compliance Office",
+    "date": "2024-03-20",
+    "classification": "confidential"
+  },
+  {
+    "id": "doc_004",
+    "title": "Company Public Information and Press Kit",
+    "content": "Founded in 2010, our company is a leader in enterprise AI solutions serving over 500 clients globally. Our mission is to make AI trustworthy and accessible for all businesses. We operate in North America, Europe, and Asia Pacific regions. Our headquarters is located in San Francisco, CA. For media inquiries, contact press@company.com. Visit our website at www.company.com for more information. We are committed to transparency, innovation, and customer success.",
+    "domain": "public",
+    "author": "Marketing Team",
+    "date": "2024-02-01",
+    "classification": "public"
+  },
+  {
+    "id": "doc_005",
+    "title": "Q1 2024 Sales Performance Report",
+    "content": "Q1 sales exceeded targets by 12%. Top performing regions were West Coast (30% of revenue) and Northeast (25% of revenue). Key accounts include TechCorp ($5.2M), FinanceHub ($3.8M), and HealthSystems ($2.9M). Sales team expanded by 8 new hires. AccountNumber FN982374 holds the commission pool totaling $890,000 for Q1 distribution. CRM data shows 245 active opportunities in pipeline worth $67M projected annual value. For details, contact sales@company.com.",
+    "domain": "finance",
+    "author": "Sales Operations",
+    "date": "2024-04-10",
+    "classification": "confidential"
+  },
+  {
+    "id": "doc_006",
+    "title": "Employee Onboarding Guide",
+    "content": "Welcome to the team! Your first week will include orientation, IT setup, meeting your team, and initial training sessions. You'll receive your employee handbook, company laptop, and access credentials. Please review our code of conduct and sign required acknowledgments. Set up direct deposit through our HR portal using your bank account information. Your manager will schedule regular 1-on-1 meetings. We encourage you to join employee resource groups and participate in company events. For any questions, reach out to onboarding@company.com.",
+    "domain": "hr",
+    "author": "HR Department",
+    "date": "2024-01-15",
+    "classification": "internal"
+  },
+  {
+    "id": "doc_007",
+    "title": "Patient Privacy and Data Security Protocol",
+    "content": "This document outlines our patient data protection measures. All electronic health records (EHR) are encrypted at rest and in transit. Access requires multi-factor authentication. Patient consent must be obtained before sharing any medical information. Common identifiers to protect include: full names, SSN 987-65-4321, medical record numbers MRN445566, insurance policy numbers, and biometric data. Audit logs track all data access. Security incidents must be reported within 24 hours to security@healthorg.com. Annual security assessments are conducted by third-party auditors.",
+    "domain": "health",
+    "author": "Information Security",
+    "date": "2024-05-12",
+    "classification": "confidential"
+  },
+  {
+    "id": "doc_008",
+    "title": "Corporate Social Responsibility Report 2024",
+    "content": "Our commitment to sustainability and social impact continues to grow. In 2024, we achieved carbon neutrality across all operations, donated $1M to educational nonprofits, and volunteered 5,000 employee hours to community service. Our diversity and inclusion initiatives increased representation of underrepresented groups by 15%. We partner with organizations focused on STEM education and digital literacy. Our environmental initiatives include renewable energy usage, waste reduction, and sustainable supply chain practices. Read our full impact report at www.company.com/impact.",
+    "domain": "public",
+    "author": "Corporate Affairs",
+    "date": "2024-06-01",
+    "classification": "public"
+  },
+  {
+    "id": "doc_009",
+    "title": "Legal Contract Management Guidelines",
+    "content": "All contracts must be reviewed by legal counsel before execution. Standard contract elements include: scope of work, payment terms, confidentiality clauses, liability limitations, and termination conditions. Authorized signatories are listed in the company directory. Store executed contracts in the secure document management system. Major contracts (>$100K) require board approval. Confidential vendor agreements must not disclose pricing structures or AccountNumber LG773821 payment details. For contract questions, contact legal@company.com.",
+    "domain": "legal",
+    "author": "Legal Department",
+    "date": "2024-02-20",
+    "classification": "internal"
+  },
+  {
+    "id": "doc_010",
+    "title": "Technology Stack and Infrastructure Overview",
+    "content": "Our technology infrastructure leverages cloud-native architecture on AWS. Core technologies include Python, Node.js, React, and PostgreSQL. We use Docker and Kubernetes for containerization and orchestration. CI/CD pipelines are managed through GitHub Actions. Monitoring and observability utilize Datadog and Sentry. Our AI/ML stack includes PyTorch, TensorFlow, and LangChain. Data storage combines S3, RDS, and Pinecone vector database. All systems follow security best practices including encryption, access controls, and regular vulnerability scanning. For technical documentation, visit docs.internal.company.com.",
+    "domain": "public",
+    "author": "Engineering Team",
+    "date": "2024-04-05",
+    "classification": "public"
+  },
+  {
+    "id": "doc_011",
+    "title": "Annual Performance Review Process",
+    "content": "Performance reviews are conducted annually each December. The process includes self-assessment, manager evaluation, and peer feedback. Evaluation criteria cover: goal achievement, core competencies, leadership behaviors, and cultural fit. Performance ratings range from 1 (needs improvement) to 5 (exceptional). Compensation adjustments are based on performance, market data, and budget allocation. Typical salary increases range from 3-8% for strong performers. Bonuses are discretionary and may reach 15-20% of base salary for top performers. Development plans are created for all employees. Contact hr-reviews@company.com for questions.",
+    "domain": "hr",
+    "author": "HR Department",
+    "date": "2024-11-01",
+    "classification": "internal"
+  },
+  {
+    "id": "doc_012",
+    "title": "Medical Equipment Maintenance Schedule",
+    "content": "All medical equipment must follow strict maintenance schedules per manufacturer guidelines and regulatory requirements. Critical devices (ventilators, monitors, imaging equipment) receive quarterly inspections. Maintenance logs must document: equipment ID MED-8847, inspection date, technician name, issues found, and corrective actions. Any equipment failures must be reported immediately. Patient safety is paramount - do not use equipment showing error codes or damage. Service contracts are managed through vendor portal. Equipment calibration certificates must be current. Contact maintenance@healthorg.com for service requests.",
+    "domain": "health",
+    "author": "Facilities Management",
+    "date": "2024-03-15",
+    "classification": "internal"
+  }
+]
+
