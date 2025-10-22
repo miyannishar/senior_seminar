@@ -19,16 +19,32 @@ tiktoken>=0.7.0
 # Configuration & Validation
 python-dotenv==1.0.0
 dataclasses>=0.6
+tqdm==4.66.1
 
-# Optional: For Pinecone integration (production)
-# pinecone-client==3.0.0
+# Pinecone for production vector database
+pinecone-client==3.0.3
+
+# Redis for caching (optional but recommended for production)
+redis==5.0.1
+
+# FastAPI for REST API
+fastapi==0.109.0
+uvicorn[standard]==0.27.0
+pydantic==2.5.3
+
+# Metrics and monitoring
+prometheus-client==0.19.0
+python-json-logger==2.0.7
 
 # Optional: For enhanced demo UI
 # streamlit==1.29.0
 # plotly==5.18.0
 
-# Development and Testing (optional)
-# pytest==7.4.3
-# black==23.12.1
-# flake8==7.0.0
+# Development and Testing
+pytest==7.4.3
+pytest-cov==4.1.0
+pytest-asyncio==0.21.1
+black==23.12.1
+flake8==7.0.0
+mypy==1.7.1
 
