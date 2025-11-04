@@ -4,8 +4,13 @@
 # Core LangChain and OpenAI
 langchain==0.2.16
 langchain-openai==0.1.23
-langchain-community==0.2.16
+langchain-community>=0.2.16
 openai>=1.35.0
+
+# Google ADK (Agent Development Kit)
+google-adk>=0.1.0
+google-genai>=0.1.0
+litellm>=1.40.0
 
 # Vector Store and Embeddings
 faiss-cpu==1.8.0
