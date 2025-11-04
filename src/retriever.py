@@ -126,9 +126,11 @@ class HybridRetriever:
             
             if self.pinecone_index_name not in existing_indexes:
                 logger.info(f"📝 Creating new Pinecone index: {self.pinecone_index_name}")
+                # Use 1024 dimensions for text-embedding-3-large model
+                embedding_dimension = self.embeddings.dimensions if hasattr(self.embeddings, 'dimensions') else 1024
                 pc.create_index(
                     name=self.pinecone_index_name,
-                    dimension=1536,  # OpenAI embeddings dimension
+                    dimension=embedding_dimension,  # Match embedding model dimension
                     metric='cosine',
                     spec=ServerlessSpec(
                         cloud='aws',
@@ -217,11 +219,18 @@ class HybridRetriever:
             docs = []
             for match in results.matches:
                 doc_index = match.metadata.get('doc_index')
-                if doc_index is not None and doc_index < len(self.documents):
-                    doc = self.documents[doc_index].copy()
-                    doc['retrieval_method'] = 'semantic-pinecone'
-                    doc['relevance_score'] = match.score
-                    docs.append(doc)
+                # Convert to int if it's a float (Pinecone may return floats)
+                if doc_index is not None:
+                    try:
+                        doc_index = int(doc_index)
+                        if 0 <= doc_index < len(self.documents):
+                            doc = self.documents[doc_index].copy()
+                            doc['retrieval_method'] = 'semantic-pinecone'
+                            doc['relevance_score'] = match.score
+                            docs.append(doc)
+                    except (ValueError, TypeError) as e:
+                        logger.warning(f"⚠️  Invalid doc_index {doc_index}: {e}")
+                        continue
             
             return docs
             

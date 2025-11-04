@@ -1,6 +1,5 @@
 """
-Root/Base Agent - Trustworthy RAG Orchestrator using Google ADK.
-Coordinates retrieval, security, compliance, and response agents.
+Base/Orchestrator Agent - Routes queries to domain-specific agents.
 """
 
 import sys
@@ -14,14 +13,13 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../../src'))
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../..'))
 
 from google.adk.agents import LlmAgent
-from google.adk.tools.agent_tool import AgentTool
 
-from agentic_system.base.prompt import ROOT_AGENT_FULL
+from agentic_system.base.prompt import BASE_AGENT_FULL
 from agentic_system.utils.llm import get_powerful_llm
-from agentic_system.retrieval.agent import create_retrieval_agent
-from agentic_system.security.agent import create_security_agent
-from agentic_system.compliance.agent import create_compliance_agent
-from agentic_system.response.agent import create_response_agent
+from agentic_system.accounting.agent import create_accounting_agent
+from agentic_system.financial.agent import create_financial_agent
+from agentic_system.hr.agent import create_hr_agent
+from agentic_system.law.agent import create_law_agent
 from retriever import HybridRetriever
 from utils.logger import setup_logger
 
@@ -33,11 +31,11 @@ def create_trustworthy_rag_agent(api_key: Optional[str] = None) -> LlmAgent:
     """
     Create the Trustworthy RAG orchestrator agent using Google ADK.
     
-    This agent coordinates:
-    - Retrieval agent (finds documents)
-    - Security agent (validates and masks)
-    - Compliance agent (checks regulatory compliance)
-    - Response agent (generates answers)
+    This agent routes queries to domain-specific agents:
+    - Accounting agent (accounting queries)
+    - Financial agent (financial performance queries)
+    - HR agent (HR and benefits queries)
+    - Law agent (legal and compliance queries)
     
     Args:
         api_key: OpenAI API key (optional, uses env variable if not provided)
@@ -46,7 +44,7 @@ def create_trustworthy_rag_agent(api_key: Optional[str] = None) -> LlmAgent:
         LlmAgent: Configured root orchestrator agent
     """
     logger.info("=" * 60)
-    logger.info("🚀 Creating Trustworthy RAG Agentic System with Google ADK")
+    logger.info("🚀 Creating Trustworthy RAG Agentic System with Domain Agents")
     logger.info("=" * 60)
     
     # Load documents
@@ -74,57 +72,54 @@ def create_trustworthy_rag_agent(api_key: Optional[str] = None) -> LlmAgent:
         pinecone_namespace="default"
     )
     
-    # Create specialized agents
-    logger.info("🤖 Creating specialized sub-agents...")
+    # Create domain agents
+    logger.info("🤖 Creating domain-specific agents...")
     
-    retrieval_agent = create_retrieval_agent(retriever, api_key=api_key)
-    logger.info("  ✅ Retrieval agent ready")
+    accounting_agent = create_accounting_agent(retriever, api_key=api_key)
+    logger.info("  ✅ Accounting agent ready")
     
-    security_agent = create_security_agent(api_key=api_key)
-    logger.info("  ✅ Security agent ready")
+    financial_agent = create_financial_agent(retriever, api_key=api_key)
+    logger.info("  ✅ Financial agent ready")
     
-    compliance_agent = create_compliance_agent(api_key=api_key)
-    logger.info("  ✅ Compliance agent ready")
+    hr_agent = create_hr_agent(retriever, api_key=api_key)
+    logger.info("  ✅ HR agent ready")
     
-    response_agent = create_response_agent(api_key=api_key)
-    logger.info("  ✅ Response agent ready")
+    law_agent = create_law_agent(retriever, api_key=api_key)
+    logger.info("  ✅ Law agent ready")
     
-    # Create root orchestrator
-    logger.info("🎭 Creating root orchestrator agent...")
+    # Create root orchestrator with sub-agents
+    logger.info("🎭 Creating base orchestrator agent with sub-agents...")
     
     root_model = get_powerful_llm(api_key=api_key)
     
-    # Wrap sub-agents with AgentTool for proper ADK integration
-    retrieval_agent_tool = AgentTool(agent=retrieval_agent)
-    security_agent_tool = AgentTool(agent=security_agent)
-    compliance_agent_tool = AgentTool(agent=compliance_agent)
-    response_agent_tool = AgentTool(agent=response_agent)
-    
+    # Pass domain agents as sub_agents to establish parent-child hierarchy
+    # According to ADK docs: sub_agents parameter creates the agent hierarchy
+    # The base agent can use LLM-Driven Delegation (transfer_to_agent) to route to sub-agents
+    # Each sub-agent has its own tools (RAG tools) for document retrieval and validation
     root_agent = LlmAgent(
         name="trustworthy_rag_agent",
         model=root_model,
         description=(
-            "Enterprise Trustworthy RAG orchestrator with privacy, "
-            "security, and compliance built-in"
+            "Enterprise Trustworthy RAG orchestrator with domain-specific sub-agents "
+            "and role-based access control"
         ),
-        instruction=ROOT_AGENT_FULL,
-        tools=[
-            retrieval_agent_tool,
-            security_agent_tool,
-            compliance_agent_tool,
-            response_agent_tool
+        instruction=BASE_AGENT_FULL,
+        sub_agents=[
+            accounting_agent,
+            financial_agent,
+            hr_agent,
+            law_agent
         ]
     )
     
     logger.info("=" * 60)
     logger.info("✅ Trustworthy RAG Agent System Ready!")
     logger.info("=" * 60)
-    logger.info("Capabilities:")
-    logger.info("  🔍 Hybrid retrieval (Pinecone + TF-IDF)")
-    logger.info("  🔒 RBAC & PII masking")
-    logger.info("  ⚖️  Compliance validation (HIPAA, GDPR, SOX)")
-    logger.info("  📝 High-quality response generation")
-    logger.info("  🤖 Multi-agent orchestration")
+    logger.info("Domain Agents:")
+    logger.info("  📊 Accounting Agent")
+    logger.info("  💰 Financial Agent")
+    logger.info("  👥 HR Agent")
+    logger.info("  ⚖️  Law Agent")
     logger.info("=" * 60)
     
     return root_agent
@@ -149,4 +144,3 @@ def get_trustworthy_rag_agent(api_key: Optional[str] = None) -> LlmAgent:
     if trustworthy_rag_agent is None:
         trustworthy_rag_agent = create_trustworthy_rag_agent(api_key=api_key)
     return trustworthy_rag_agent
-
