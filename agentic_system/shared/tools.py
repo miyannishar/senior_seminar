@@ -32,7 +32,7 @@ def create_rag_tools(retriever: HybridRetriever, domain: str):
     
     Args:
         retriever: HybridRetriever instance
-        domain: Document domain (finance, accounting, hr, legal, health, public)
+        domain: Document domain (finance, hr, health, legal, public)
     
     Returns:
         Tuple of tool functions: (check_access, retrieve_and_validate, extract_info)
@@ -43,7 +43,7 @@ def create_rag_tools(retriever: HybridRetriever, domain: str):
         """
         Check if user has access to a domain. DETERMINISTIC - no LLM involved.
         
-        Maps department-specific roles (e.g., "manager" in accounting) to general roles
+        Maps department-specific roles (e.g., "manager" in finance) to general roles
         for access control checking.
         
         Args:
@@ -118,9 +118,8 @@ def create_rag_tools(retriever: HybridRetriever, domain: str):
             logger.error(f"❌ Retrieval failed: {e}")
             return []
         
-        # Step 2: Filter by domain (with mapping for accounting -> finance)
+        # Step 2: Filter by domain
         domain_mapping = {
-            'accounting': 'finance',  # Accounting queries use finance domain documents
             'financial': 'finance',   # Financial queries use finance domain documents
         }
         search_domain = domain_mapping.get(domain, domain)

@@ -32,6 +32,13 @@ DEPARTMENT_ROLE_MAPPING: Dict[str, Dict[str, str]] = {
         "paralegal": "manager",
         "employee": "employee",
         "general": "guest"
+    },
+    "health": {
+        "manager": "admin",  # Health managers have admin access (HIPAA compliance)
+        "doctor": "analyst",  # Doctors have analyst access
+        "nurse": "manager",
+        "employee": "employee",
+        "general": "guest"
     }
 }
 

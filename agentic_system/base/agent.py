@@ -16,9 +16,9 @@ from google.adk.agents import LlmAgent
 
 from agentic_system.base.prompt import BASE_AGENT_FULL
 from agentic_system.utils.llm import get_powerful_llm
-from agentic_system.accounting.agent import create_accounting_agent
 from agentic_system.financial.agent import create_financial_agent
 from agentic_system.hr.agent import create_hr_agent
+from agentic_system.health.agent import create_health_agent
 from agentic_system.law.agent import create_law_agent
 from retriever import HybridRetriever
 from utils.logger import setup_logger
@@ -32,9 +32,9 @@ def create_trustworthy_rag_agent(api_key: Optional[str] = None) -> LlmAgent:
     Create the Trustworthy RAG orchestrator agent using Google ADK.
     
     This agent routes queries to domain-specific agents:
-    - Accounting agent (accounting queries)
     - Financial agent (financial performance queries)
     - HR agent (HR and benefits queries)
+    - Health agent (healthcare and HIPAA compliance queries)
     - Law agent (legal and compliance queries)
     
     Args:
@@ -75,14 +75,14 @@ def create_trustworthy_rag_agent(api_key: Optional[str] = None) -> LlmAgent:
     # Create domain agents
     logger.info("🤖 Creating domain-specific agents...")
     
-    accounting_agent = create_accounting_agent(retriever, api_key=api_key)
-    logger.info("  ✅ Accounting agent ready")
-    
     financial_agent = create_financial_agent(retriever, api_key=api_key)
     logger.info("  ✅ Financial agent ready")
     
     hr_agent = create_hr_agent(retriever, api_key=api_key)
     logger.info("  ✅ HR agent ready")
+    
+    health_agent = create_health_agent(retriever, api_key=api_key)
+    logger.info("  ✅ Health agent ready")
     
     law_agent = create_law_agent(retriever, api_key=api_key)
     logger.info("  ✅ Law agent ready")
@@ -105,9 +105,9 @@ def create_trustworthy_rag_agent(api_key: Optional[str] = None) -> LlmAgent:
         ),
         instruction=BASE_AGENT_FULL,
         sub_agents=[
-            accounting_agent,
             financial_agent,
             hr_agent,
+            health_agent,
             law_agent
         ]
     )
@@ -116,9 +116,9 @@ def create_trustworthy_rag_agent(api_key: Optional[str] = None) -> LlmAgent:
     logger.info("✅ Trustworthy RAG Agent System Ready!")
     logger.info("=" * 60)
     logger.info("Domain Agents:")
-    logger.info("  📊 Accounting Agent")
     logger.info("  💰 Financial Agent")
     logger.info("  👥 HR Agent")
+    logger.info("  🏥 Health Agent")
     logger.info("  ⚖️  Law Agent")
     logger.info("=" * 60)
     
