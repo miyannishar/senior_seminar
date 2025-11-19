@@ -16,6 +16,7 @@ from google.adk.agents import LlmAgent
 
 from agentic_system.base.prompt import BASE_AGENT_FULL
 from agentic_system.utils.llm import get_powerful_llm
+from agentic_system.shared.before_agent_callback import create_before_agent_callback
 from agentic_system.financial.agent import create_financial_agent
 from agentic_system.hr.agent import create_hr_agent
 from agentic_system.health.agent import create_health_agent
@@ -76,26 +77,24 @@ def create_trustworthy_rag_agent(api_key: Optional[str] = None) -> LlmAgent:
     logger.info("🤖 Creating domain-specific agents...")
     
     financial_agent = create_financial_agent(retriever, api_key=api_key)
-    logger.info("  ✅ Financial agent ready")
+    logger.info("  ✅ Financial agent ready (with guardrails)")
     
     hr_agent = create_hr_agent(retriever, api_key=api_key)
-    logger.info("  ✅ HR agent ready")
+    logger.info("  ✅ HR agent ready (with guardrails)")
     
     health_agent = create_health_agent(retriever, api_key=api_key)
-    logger.info("  ✅ Health agent ready")
+    logger.info("  ✅ Health agent ready (with guardrails)")
     
     law_agent = create_law_agent(retriever, api_key=api_key)
-    logger.info("  ✅ Law agent ready")
+    logger.info("  ✅ Law agent ready (with guardrails)")
     
     # Create root orchestrator with sub-agents
     logger.info("🎭 Creating base orchestrator agent with sub-agents...")
     
     root_model = get_powerful_llm(api_key=api_key)
+    before_agent_callback = create_before_agent_callback(domain="base", default_role="employee")
     
-    # Pass domain agents as sub_agents to establish parent-child hierarchy
-    # According to ADK docs: sub_agents parameter creates the agent hierarchy
-    # The base agent can use LLM-Driven Delegation (transfer_to_agent) to route to sub-agents
-    # Each sub-agent has its own tools (RAG tools) for document retrieval and validation
+    # Create root orchestrator with before_agent_callback
     root_agent = LlmAgent(
         name="trustworthy_rag_agent",
         model=root_model,
@@ -109,7 +108,8 @@ def create_trustworthy_rag_agent(api_key: Optional[str] = None) -> LlmAgent:
             hr_agent,
             health_agent,
             law_agent
-        ]
+        ],
+        before_agent_callback=before_agent_callback
     )
     
     logger.info("=" * 60)

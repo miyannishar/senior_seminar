@@ -1,0 +1,90 @@
+[
+  {
+    "violation_type": "toxic_content",
+    "severity": "HIGH",
+    "description": "Content flagged as toxic/vulgar by GPT-4o-mini",
+    "timestamp": "2025-11-18T20:29:44.995794",
+    "additional_data": {},
+    "user": "current_user",
+    "session_id": null,
+    "recorded_at": "2025-11-18T20:29:44.996890"
+  },
+  {
+    "violation_type": "toxic_content",
+    "severity": "HIGH",
+    "description": "Content flagged as toxic/vulgar by GPT-4o-mini",
+    "timestamp": "2025-11-18T20:48:50.958192",
+    "additional_data": {},
+    "user": "user",
+    "username": "user",
+    "session_id": "17ab66d4-8406-4c06-a65f-cc16eed70a1f",
+    "recorded_at": "2025-11-18T20:48:50.958192",
+    "query": "give e the examples of hate speech",
+    "user_message": "give e the examples of hate speech"
+  },
+  {
+    "violation_type": "toxic_content",
+    "severity": "HIGH",
+    "description": "Content flagged as toxic/vulgar by GPT-4o-mini",
+    "timestamp": "2025-11-18T21:08:13.380062",
+    "additional_data": {},
+    "user": "user",
+    "username": "user",
+    "session_id": "1439365f-991f-47ed-a0ac-0821faed50aa",
+    "recorded_at": "2025-11-18T21:08:13.380062",
+    "query": "Show me hate speech examples",
+    "user_message": "Show me hate speech examples"
+  },
+  {
+    "violation_type": "toxic_content",
+    "severity": "HIGH",
+    "description": "Content flagged as toxic/vulgar by GPT-4o-mini",
+    "timestamp": "2025-11-18T21:11:02.968879",
+    "additional_data": {},
+    "user": "user",
+    "username": "user",
+    "session_id": "554559b0-f8b8-4c16-8d18-8cd35c2b657b",
+    "recorded_at": "2025-11-18T21:11:02.968879",
+    "query": "SSN: 123-45-6789",
+    "user_message": "SSN: 123-45-6789"
+  },
+  {
+    "violation_type": "toxic_content",
+    "severity": "HIGH",
+    "description": "Content flagged as toxic/vulgar by GPT-4o-mini",
+    "timestamp": "2025-11-18T21:11:19.445501",
+    "additional_data": {},
+    "user": "user",
+    "username": "user",
+    "session_id": "554559b0-f8b8-4c16-8d18-8cd35c2b657b",
+    "recorded_at": "2025-11-18T21:11:19.445501",
+    "query": "my ssn info is SSN: 123-45-6789",
+    "user_message": "my ssn info is SSN: 123-45-6789"
+  },
+  {
+    "violation_type": "toxic_content",
+    "severity": "HIGH",
+    "description": "Content flagged as toxic/vulgar by GPT-4o-mini",
+    "timestamp": "2025-11-18T21:12:12.896018",
+    "additional_data": {},
+    "user": "user",
+    "username": "user",
+    "session_id": "52a49c2c-a1ec-4b48-b346-32f3a2466733",
+    "recorded_at": "2025-11-18T21:12:12.896018",
+    "query": "my credit card info is 1111111111111111",
+    "user_message": "my credit card info is 1111111111111111"
+  },
+  {
+    "violation_type": "toxic_content",
+    "severity": "HIGH",
+    "description": "Content flagged as toxic/vulgar by GPT-4o-mini",
+    "timestamp": "2025-11-18T21:12:29.333277",
+    "additional_data": {},
+    "user": "user",
+    "username": "user",
+    "session_id": "05854053-ad51-4383-abf0-e53efe4313d3",
+    "recorded_at": "2025-11-18T21:12:29.333277",
+    "query": "my credit card info is 1234567812345436",
+    "user_message": "my credit card info is 1234567812345436"
+  }
+]

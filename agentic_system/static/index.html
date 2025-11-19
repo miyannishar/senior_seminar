@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Guardrails & Security Dashboard</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🛡️ Guardrails & Security Dashboard</h1>
+            <p class="subtitle">Real-time monitoring for guardrail violations and security metrics</p>
+            <div class="status-bar">
+                <span id="last-update">Last update: Never</span>
+                <button id="refresh-btn" onclick="loadDashboard()">🔄 Refresh</button>
+            </div>
+        </header>
+
+        <div class="dashboard-grid">
+            <!-- Guardrail Metrics Card -->
+            <div class="card">
+                <h2>🛡️ Guardrail Metrics</h2>
+                <div class="metrics-grid">
+                    <div class="metric-item">
+                        <div class="metric-label">Total Violations</div>
+                        <div class="metric-value" id="total-violations">-</div>
+                    </div>
+                    <div class="metric-item critical">
+                        <div class="metric-label">Critical</div>
+                        <div class="metric-value" id="critical-violations">-</div>
+                    </div>
+                    <div class="metric-item high">
+                        <div class="metric-label">High</div>
+                        <div class="metric-value" id="high-violations">-</div>
+                    </div>
+                </div>
+                <div class="status-indicators">
+                    <div class="status-item">
+                        <span class="status-dot" id="pii-status"></span>
+                        <span>PII Detection</span>
+                    </div>
+                    <div class="status-item">
+                        <span class="status-dot" id="content-status"></span>
+                        <span>Content Moderation</span>
+                    </div>
+                    <div class="status-item">
+                        <span class="status-dot" id="rate-status"></span>
+                        <span>Rate Limiting</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Violations by Type Card -->
+            <div class="card">
+                <h2>📊 Violations by Type</h2>
+                <div id="violations-by-type" class="chart-container">
+                    <div class="loading">Loading...</div>
+                </div>
+            </div>
+
+            <!-- Violations by Severity Card -->
+            <div class="card">
+                <h2>⚠️ Violations by Severity</h2>
+                <div id="violations-by-severity" class="chart-container">
+                    <div class="loading">Loading...</div>
+                </div>
+            </div>
+
+            <!-- Recent Violations Card -->
+            <div class="card full-width">
+                <h2>🚨 Recent Violations</h2>
+                <div id="recent-violations" class="violations-list">
+                    <div class="loading">Loading...</div>
+                </div>
+            </div>
+
+            <!-- Security Alerts Card -->
+            <div class="card full-width">
+                <h2>🔒 Security Alerts</h2>
+                <div id="security-alerts" class="alerts-list">
+                    <div class="loading">Loading...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="dashboard.js"></script>
+</body>
+</html>
+

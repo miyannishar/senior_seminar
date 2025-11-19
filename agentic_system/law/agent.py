@@ -1,19 +1,17 @@
 """
-Law/Legal Agent for legal and compliance queries.
+Law Agent for legal queries.
 """
 
 import sys
 import os
-
-# Add paths
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../../src'))
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../..'))
 
 from typing import Optional
 from google.adk.agents import LlmAgent
-
 from agentic_system.law.prompt import LAW_AGENT_FULL
 from agentic_system.shared.tools import create_rag_tools
+from agentic_system.shared.before_agent_callback import create_before_agent_callback
 from agentic_system.utils.llm import get_standard_llm
 from retriever import HybridRetriever
 from utils.logger import setup_logger
@@ -21,40 +19,22 @@ from utils.logger import setup_logger
 logger = setup_logger(__name__)
 
 
-def create_law_agent(
-    retriever: HybridRetriever,
-    api_key: Optional[str] = None
-) -> LlmAgent:
-    """
-    Create the law/legal agent.
-    
-    Args:
-        retriever: HybridRetriever instance
-        api_key: OpenAI API key (optional)
-    
-    Returns:
-        LlmAgent configured for legal queries
-    """
+def create_law_agent(retriever: HybridRetriever, api_key: Optional[str] = None) -> LlmAgent:
+    """Create law agent."""
     logger.info("🔨 Creating law agent...")
     
-    # Create LLM
     llm = get_standard_llm(api_key=api_key)
+    tools = create_rag_tools(retriever, domain="legal")
+    before_agent_callback = create_before_agent_callback(domain="legal", default_role="employee")
     
-    # Create RAG tools bound to retriever and legal domain
-    check_access, retrieve_and_validate, extract_info, mask_pii_for_role = create_rag_tools(
-        retriever=retriever,
-        domain="legal"
-    )
-    
-    # Create agent - ADK will auto-convert functions to tools
     agent = LlmAgent(
         name="law_agent",
         model=llm,
-        description="Handles legal and compliance queries with role-based access control",
+        description="Handles legal queries with role-based access control",
         instruction=LAW_AGENT_FULL,
-        tools=[check_access, retrieve_and_validate, extract_info, mask_pii_for_role]
+        tools=list(tools),
+        before_agent_callback=before_agent_callback
     )
     
     logger.info("✅ Law agent created")
     return agent
-

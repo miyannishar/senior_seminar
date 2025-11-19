@@ -1,279 +1,191 @@
 """
 Shared RAG tools for all domain agents.
-These tools validate access DETERMINISTICALLY before allowing any data to reach the LLM.
 """
 
 import sys
 import os
-
-# Add src to path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../../../src'))
 
-from typing import Dict, Any, List, Optional
-
+from typing import Dict, Any, List
 from retriever import HybridRetriever
-from validator import (
-    check_access_permission,
-    validation_filter,
-    batch_validate,
-    mask_sensitive_data,
-    detect_sensitive_terms
-)
+from validator import check_access_permission, validation_filter, mask_sensitive_data
 from agentic_system.shared.role_mapping import get_role_for_access
+from agentic_system.shared.explainability import create_explainability_tools
+from agentic_system.shared.audit import get_audit_logger
+from agentic_system.shared.security_monitor import get_security_monitor
+from agentic_system.shared.guardrails import get_guardrails
 from utils.logger import setup_logger
 
 logger = setup_logger(__name__)
 
+audit_logger = get_audit_logger()
+security_monitor = get_security_monitor()
+guardrails = get_guardrails()
+
 
 def create_rag_tools(retriever: HybridRetriever, domain: str):
-    """
-    Create RAG tools bound to a retriever and domain.
-    These tools validate access deterministically before extraction.
-    
-    Args:
-        retriever: HybridRetriever instance
-        domain: Document domain (finance, hr, health, legal, public)
-    
-    Returns:
-        Tuple of tool functions: (check_access, retrieve_and_validate, extract_info)
-    """
+    """Create RAG tools for a domain."""
     logger.info(f"✅ RAG tools initialized for domain: {domain}")
     
-    def check_access(department_role: str, document_domain: Optional[str] = None, **kwargs) -> bool:
-        """
-        Check if user has access to a domain. DETERMINISTIC - no LLM involved.
+    explain_why_denied, explain_retrieval = create_explainability_tools(domain)
+    
+    def check_access(department_role: str, **kwargs) -> bool:
+        """Check if user has access to domain."""
+        document_domain = kwargs.get('document_domain', domain)
         
-        Maps department-specific roles (e.g., "manager" in finance) to general roles
-        for access control checking.
-        
-        Args:
-            department_role: User's role within the department (e.g., "manager", "employee")
-            document_domain: Domain to check (defaults to agent's domain)
-        
-        Returns:
-            True if access allowed, False otherwise
-        """
-        if document_domain is None and 'document_domain' in kwargs:
-            document_domain = kwargs['document_domain']
-        if document_domain is None:
-            document_domain = domain
-        
-        # Map department role to general role for access control
         general_role = get_role_for_access(domain, department_role)
-        
         allowed = check_access_permission(general_role, document_domain)
-        logger.info(f"🔑 Access check: {department_role} ({domain}) -> {general_role} -> {document_domain}: {allowed}")
+        
+        audit_logger.log_access_attempt(
+            user="current_user",
+            user_role=general_role,
+            domain=document_domain,
+            decision="granted" if allowed else "denied"
+        )
+        
+        # Create security alert if access denied
+        if not allowed:
+            reason = f"Role '{general_role}' (from department role '{department_role}') does not have access to '{document_domain}' domain"
+            security_monitor.record_access_denial(
+                user="current_user",
+                session_id=kwargs.get('session_id', 'unknown'),
+                domain=document_domain,
+                role=general_role,
+                query=kwargs.get('query', ''),
+                reason=reason
+            )
+        
         return allowed
     
-    def retrieve_and_validate(
-        query: Optional[str] = None,
-        department_role: Optional[str] = None,
-        k: int = 5,
-        semantic_weight: float = 0.7,
-        **kwargs
-    ) -> List[Dict[str, Any]]:
-        """
-        Retrieve documents and validate access DETERMINISTICALLY before returning.
-        This ensures unauthorized PII never reaches the LLM.
+    def retrieve_and_validate(query: str, department_role: str, k: int = 5, **kwargs) -> List[Dict[str, Any]]:
+        """Retrieve and validate documents."""
+        logger.info("=" * 60)
+        logger.info(f"🔍 TOOL CALLED: retrieve_and_validate")
+        logger.info(f"   Domain: {domain}")
+        logger.info(f"   Query: {query[:200]}...")
+        logger.info(f"   Department Role: {department_role}")
+        logger.info("=" * 60)
         
-        Steps:
-        1. Retrieve documents using hybrid search
-        2. Filter by domain
-        3. Map department role to general role
-        4. Check access permission for each document (deterministic)
-        5. Mask PII according to role (deterministic)
-        6. Return only validated, masked documents
+        if not query or not department_role:
+            raise ValueError("query and department_role required")
         
-        Args:
-            query: Search query (required)
-            department_role: User's role within the department (e.g., "manager", "employee") (required)
-            k: Number of documents to retrieve
-            semantic_weight: Weight for semantic search (0-1)
-        
-        Returns:
-            List of validated, masked documents (unauthorized ones filtered out)
-        """
-        # Handle ADK function calling format
-        if query is None and 'query' in kwargs:
-            query = kwargs['query']
-        if department_role is None and 'department_role' in kwargs:
-            department_role = kwargs['department_role']
-        if query is None or department_role is None:
-            raise ValueError("query and department_role parameters are required")
-        
-        # Map department role to general role for access control
         general_role = get_role_for_access(domain, department_role)
         
-        logger.info(f"🔍 Retrieving and validating documents for: '{query[:50]}...' (role: {department_role} -> {general_role})")
-        
-        # Step 1: Retrieve documents using hybrid search
-        try:
-            all_results = retriever.retrieve(
+        # Check domain access first - create alert if denied
+        if not check_access_permission(general_role, domain):
+            reason = f"Role '{general_role}' (from department role '{department_role}') does not have access to '{domain}' domain"
+            security_monitor.record_access_denial(
+                user="current_user",
+                session_id=kwargs.get('session_id', 'unknown'),
+                domain=domain,
+                role=general_role,
                 query=query,
-                k=k * 2,  # Get more to account for filtering
-                semantic_weight=semantic_weight
+                reason=reason
             )
-            logger.info(f"📚 Retrieved {len(all_results)} documents")
+            audit_logger.log_access_attempt("current_user", general_role, domain, "denied")
+            return []  # Return empty - access denied
+        
+        # Guardrail check - THIS IS WHERE VALIDATION HAPPENS
+        logger.info(f"🛡️  Running guardrail validation for domain '{domain}'...")
+        is_safe, violation = guardrails.validate_input(query, "current_user", general_role, domain)
+        if not is_safe:
+            logger.critical("=" * 60)
+            logger.critical("🚨 INPUT BLOCKED BY GUARDRAILS IN TOOL")
+            logger.critical(f"   Violation: {violation.get('description', 'Unknown')}")
+            logger.critical(f"   Type: {violation.get('violation_type', 'UNKNOWN')}")
+            logger.critical(f"   Severity: {violation.get('severity', 'UNKNOWN')}")
+            logger.critical("=" * 60)
+            return []
+        
+        # Retrieve documents
+        try:
+            all_results = retriever.retrieve(query=query, k=k * 2)
         except Exception as e:
             logger.error(f"❌ Retrieval failed: {e}")
             return []
         
-        # Step 2: Filter by domain
-        domain_mapping = {
-            'financial': 'finance',   # Financial queries use finance domain documents
-        }
-        search_domain = domain_mapping.get(domain, domain)
-        
-        domain_results = [doc for doc in all_results if doc.get('domain') == search_domain]
+        # Filter by domain
+        domain_results = [doc for doc in all_results if doc.get('domain') == domain]
         if not domain_results:
-            logger.warning(f"⚠️  No documents found in {search_domain} domain")
-            # Fallback to public domain
             domain_results = [doc for doc in all_results if doc.get('domain') == 'public']
         
-        # Step 3: Validate access DETERMINISTICALLY (before LLM sees anything)
+        # Validate access
         validated_docs = []
-        denied_count = 0
-        
         for doc in domain_results:
-            # Check access first (deterministic) - use the actual document domain
-            # Use general_role (mapped from department_role) for access control
             doc_domain = doc.get('domain', 'public')
             if not check_access_permission(general_role, doc_domain):
-                denied_count += 1
-                logger.warning(f"🚫 Access denied: {department_role} ({general_role}) cannot access {doc_domain} document: {doc.get('id')}")
+                audit_logger.log_access_attempt("current_user", general_role, doc_domain, "denied")
+                reason = f"Role '{general_role}' (from department role '{department_role}') attempted to access document in '{doc_domain}' domain"
+                security_monitor.record_access_denial(
+                    user="current_user",
+                    session_id=kwargs.get('session_id', 'unknown'),
+                    domain=doc_domain,
+                    role=general_role,
+                    query=query,
+                    reason=reason
+                )
                 continue
             
-            # Validate and mask PII (deterministic) - this happens BEFORE LLM sees data
-            # Use general_role for validation (matches ROLE_ACCESS mapping)
-            validated = validation_filter(
-                doc=doc,
-                user_role=general_role,
-                mask_pii=True,
-                log_violations=True
-            )
-            
+            validated = validation_filter(doc, user_role=general_role, mask_pii=True, log_violations=True)
             if validated:
                 validated_docs.append(validated)
-            else:
-                denied_count += 1
         
-        logger.info(f"✅ Validated: {len(validated_docs)}, Denied: {denied_count}")
+        audit_logger.log_query("current_user", general_role, query, domain, len(all_results), len(validated_docs))
         
-        # Return top k validated documents
         return validated_docs[:k]
     
-    def extract_info(
-        validated_documents: Optional[List[Dict[str, Any]]] = None,
-        query: Optional[str] = None,
-        **kwargs
-    ) -> Dict[str, Any]:
-        """
-        Extract information from validated documents.
-        This is called AFTER validation, so all documents are already clean.
+    def extract_info(**kwargs) -> Dict[str, Any]:
+        """Extract info from validated documents."""
+        validated_documents = kwargs.get('validated_documents') or kwargs.get('documents') or []
         
-        Note: You should first call retrieve_and_validate to get validated documents,
-        then pass those documents to this function.
+        if not validated_documents:
+            return {"context": "", "sources": [], "document_count": 0, "domain": domain}
         
-        Args:
-            validated_documents: List of validated, masked documents from retrieve_and_validate (required)
-            query: Original query for context
-        
-        Returns:
-            Dict with extracted information, sources, and metadata
-        """
-        # Handle ADK function calling format - check multiple possible parameter names
-        if validated_documents is None:
-            validated_documents = kwargs.get('validated_documents') or kwargs.get('documents') or kwargs.get('docs')
-        
-        if validated_documents is None:
-            logger.warning("⚠️  extract_info called without validated_documents. Please call retrieve_and_validate first.")
-            return {
-                "context": "",
-                "sources": [],
-                "document_count": 0,
-                "domain": domain,
-                "error": "No validated documents provided. Please call retrieve_and_validate first to get documents."
-            }
-        
-        # Ensure it's a list
-        if not isinstance(validated_documents, list):
-            logger.warning(f"⚠️  validated_documents is not a list: {type(validated_documents)}")
-            return {
-                "context": "",
-                "sources": [],
-                "document_count": 0,
-                "domain": domain,
-                "error": "validated_documents must be a list"
-            }
-        
-        logger.info(f"📝 Extracting info from {len(validated_documents)} validated documents")
-        
-        # Build context from validated documents
         context_parts = []
         sources = []
-        
         for doc in validated_documents:
-            if not isinstance(doc, dict):
-                continue
-            context_parts.append(
-                f"[Document: {doc.get('title', 'Untitled')} (ID: {doc.get('id', 'unknown')})]\n"
-                f"{doc.get('content', '')}\n"
-            )
-            sources.append({
-                "title": doc.get("title", "Untitled"),
-                "id": doc.get("id", "unknown"),
-                "domain": doc.get("domain", "unknown")
-            })
-        
-        context = "\n".join(context_parts)
+            if isinstance(doc, dict):
+                context_parts.append(f"[{doc.get('title', 'Untitled')}]\n{doc.get('content', '')}\n")
+                sources.append({"title": doc.get("title", "Untitled"), "id": doc.get("id", "unknown")})
         
         return {
-            "context": context,
+            "context": "\n".join(context_parts),
             "sources": sources,
             "document_count": len(validated_documents),
             "domain": domain
         }
     
-    def mask_pii_for_role(
-        text: Optional[str] = None,
-        department_role: Optional[str] = None,
-        document_domain: Optional[str] = None,
-        **kwargs
-    ) -> str:
-        """
-        Mask PII in text according to role and domain.
-        DETERMINISTIC - no LLM involved.
+    def mask_pii_for_role(text: str, department_role: str = "employee", **kwargs) -> str:
+        """Mask PII in text."""
         
-        Args:
-            text: Text to mask (required)
-            department_role: User's role within the department (required)
-            document_domain: Document domain (defaults to agent's domain)
-        
-        Returns:
-            Text with PII masked according to role
-        """
-        if text is None and 'text' in kwargs:
-            text = kwargs['text']
-        if department_role is None and 'department_role' in kwargs:
-            department_role = kwargs['department_role']
-        if text is None or department_role is None:
-            raise ValueError("text and department_role parameters are required")
-        
-        if document_domain is None:
-            document_domain = domain
-        
-        # Map department role to general role
         general_role = get_role_for_access(domain, department_role)
-        
-        # Determine masking aggressiveness based on role
         aggressive = general_role not in ['admin', 'analyst']
+        return mask_sensitive_data(text, aggressive=aggressive)
         
-        masked = mask_sensitive_data(text, aggressive=aggressive)
+    def explain_decision(query: str, user_role: str = "employee", decision_type: str = "access", **kwargs) -> str:
+        """Explain a decision."""
         
-        if masked != text:
-            logger.info(f"🔒 PII masked for role: {department_role} ({general_role})")
-        
-        return masked
+        if decision_type == "access":
+            return explain_why_denied(query, user_role)
+        elif decision_type == "retrieval":
+            return explain_retrieval(query, kwargs.get('documents_found', 0), kwargs.get('documents_shown', 0))
+        return f"Decision explanation for {decision_type}"
     
-    return check_access, retrieve_and_validate, extract_info, mask_pii_for_role
-
+    def get_compliance_report(framework: str = "general", **kwargs) -> Dict[str, Any]:
+        """Get compliance report."""
+        return audit_logger.get_compliance_report(framework=framework)
+    
+    def get_security_alerts(**kwargs) -> List[Dict[str, Any]]:
+        """Get security alerts."""
+        severity = kwargs.get('severity')
+        return security_monitor.get_alerts(severity=severity)
+    
+    return (
+        check_access,
+        retrieve_and_validate,
+        extract_info,
+        mask_pii_for_role,
+        explain_decision,
+        get_compliance_report,
+        get_security_alerts
+    )

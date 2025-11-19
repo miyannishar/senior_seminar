@@ -22,6 +22,12 @@ from agents import MultiAgentRAG, Tool
 from utils.logger import setup_logger
 from utils.exceptions import AccessDeniedException, RetrievalException
 
+# Import guardrails for metrics endpoint
+import sys
+import os
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+from agentic_system.shared.guardrails import get_guardrails
+
 logger = setup_logger(__name__)
 
 # Initialize FastAPI app
@@ -73,7 +79,7 @@ agent_system: Optional[MultiAgentRAG] = None
 class UserInfo(BaseModel):
     """User information model."""
     username: str = Field(..., min_length=1, max_length=100)
-    role: str = Field(..., regex="^(admin|analyst|manager|employee|guest)$")
+    role: str = Field(..., pattern="^(admin|analyst|manager|employee|guest)$")
     
     class Config:
         schema_extra = {
@@ -109,7 +115,7 @@ class ComplianceQueryRequest(QueryRequest):
     """Query request with compliance framework."""
     compliance_framework: str = Field(
         default="general",
-        regex="^(hipaa|gdpr|sox|general)$",
+        pattern="^(hipaa|gdpr|sox|general)$",
         description="Compliance framework to apply"
     )
 
@@ -447,6 +453,28 @@ async def retriever_stats(api_key: str = Depends(get_api_key)):
         raise HTTPException(status_code=503, detail="RAG system not initialized")
     
     return rag_generator.retriever.get_stats()
+
+
+@app.get("/guardrails/metrics")
+async def guardrail_metrics():
+    """Get guardrail violation metrics and dashboard data."""
+    try:
+        guardrails = get_guardrails()
+        metrics = guardrails.get_guardrail_metrics()
+        violations = guardrails.get_violations(limit=100)
+        
+        return {
+            "success": True,
+            "metrics": metrics,
+            "recent_violations": violations,
+            "timestamp": datetime.now().isoformat()
+        }
+    except Exception as e:
+        logger.error(f"Error getting guardrail metrics: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error retrieving guardrail metrics: {str(e)}"
+        )
 
 
 # ============================================================================

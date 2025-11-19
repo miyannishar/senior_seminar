@@ -1,0 +1,15 @@
+[
+  {
+    "alert_type": "access_denied",
+    "type": "ACCESS_DENIED",
+    "timestamp": "2025-11-18T21:33:50.175360",
+    "user": "current_user",
+    "session_id": "unknown",
+    "message": "Access denied: Role 'guest' attempted to access 'finance' domain",
+    "description": "Role 'guest' (from department role 'general') does not have access to 'finance' domain",
+    "severity": "MEDIUM",
+    "domain": "finance",
+    "role": "guest",
+    "query": null
+  }
+]

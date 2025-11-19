@@ -283,6 +283,24 @@ General Roles (for access control):
 └── guest      → Access to public only
 ```
 
+### 5. Guardrails System 🛡️ (NEW)
+- **Input Validation**: Blocks prompt injection, XSS, and malicious queries before LLM processing
+- **Output Validation**: Detects PII leaks, toxic content, and policy violations in responses
+- **Rate Limiting**: Global and per-user request throttling to prevent abuse
+- **Content Safety**: Toxicity detection, bias flagging, and quality assurance
+- **Real-time Monitoring**: Automatic violation tracking and alerting
+- **Compliance Integration**: Works with audit logging and security monitoring
+
+**Key Features**:
+- ✅ Prompt injection detection (blocks "ignore previous instructions", XSS, etc.)
+- ✅ PII leak prevention in outputs
+- ✅ Toxicity and bias detection
+- ✅ Automated input sanitization
+- ✅ Rate limiting (60 req/min global, 100 req/hour per user)
+- ✅ Comprehensive violation logging
+
+**See**: [Guardrails Documentation](./GUARDRAILS_DOCUMENTATION.md) for detailed information.
+
 ## 🚀 Quick Start
 
 ### Prerequisites
